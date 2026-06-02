@@ -4,6 +4,7 @@ const config = {
   spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID || "14RmSfROInL8xHnp4xRpXBeyzNuCpfMS4FDgKM5sGVjY",
   sheetName: process.env.GOOGLE_SHEETS_SHEET_NAME || "指導中",
   columnRange: process.env.GOOGLE_SHEETS_COLUMN_RANGE || "K:K",
+  slackWebhookUrl: process.env.SLACK_WEBHOOK_URL,
   slackChannelId: process.env.SLACK_CHANNEL_ID || "G089NM0JUSK",
   slackToken: process.env.SLACK_BOT_TOKEN,
   googleClientEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -26,10 +27,13 @@ async function main() {
 
 function validateConfig() {
   const required = [
-    ["SLACK_BOT_TOKEN", config.slackToken],
     ["GOOGLE_SERVICE_ACCOUNT_EMAIL", config.googleClientEmail],
     ["GOOGLE_PRIVATE_KEY", config.googlePrivateKey]
   ];
+
+  if (!config.slackWebhookUrl && !config.slackToken) {
+    throw new Error("Missing Slack credentials: set SLACK_WEBHOOK_URL or SLACK_BOT_TOKEN.");
+  }
 
   const missing = required.filter(([, value]) => !value).map(([name]) => name);
   if (missing.length > 0) {
@@ -147,6 +151,23 @@ function formatYen(value) {
 }
 
 async function postSlackMessage(text) {
+  if (config.slackWebhookUrl) {
+    const webhookResponse = await fetch(config.slackWebhookUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify({ text })
+    });
+
+    const webhookText = await webhookResponse.text();
+    if (!webhookResponse.ok || webhookText.trim() !== "ok") {
+      throw new Error(`Failed to post Slack webhook message: ${webhookText}`);
+    }
+
+    return { ok: true, mode: "webhook" };
+  }
+
   const response = await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",
     headers: {
