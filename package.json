@@ -1,0 +1,10 @@
+{
+  "name": "sales-total-slack-post",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "run": "node scripts/post-sales-total.mjs",
+    "check": "node --check scripts/post-sales-total.mjs"
+  }
+}
